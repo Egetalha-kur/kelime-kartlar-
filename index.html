@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kelime Kartları</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d9e75">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f5f4f0;--card:#fff;--tx:#1c1c1a;--mut:#6b6b66;--ok:#1d9e75;--no:#d85a30;--bd:#ddd9d0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#242422;--tx:#f0efe9;--mut:#9a9a93;--bd:#3a3a36;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171716;--card:#242422;--tx:#f0efe9;--mut:#9a9a93;--bd:#3a3a36;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#app{flex:1;display:flex;flex-direction:column;padding:16px;max-width:480px;width:100%;margin:0 auto;box-sizing:border-box;min-height:0}
+h1{font-size:22px;margin:8px 0 4px}
+p{color:var(--mut);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;font-size:20px;cursor:pointer}
+button:active{transform:scale(.97)}
+.bar{display:flex;justify-content:space-between;color:var(--mut);font-size:14px;margin-bottom:12px}
+.track{height:6px;background:var(--bd);border-radius:3px;margin-bottom:16px}
+.fill{height:100%;background:var(--ok);border-radius:3px;width:0}
+#stage{flex:1;position:relative;min-height:0}
+.card{position:absolute;inset:0 0 60px 0;background:var(--card);border:1px solid var(--bd);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:600;touch-action:none;user-select:none;text-align:center;padding:12px}
+.tag{position:absolute;top:18px;font-size:16px;font-weight:700;border:2px solid;border-radius:8px;padding:2px 10px;opacity:0}
+#tk{left:18px;color:var(--ok)}#tu{right:18px;color:var(--no)}
+.acts{position:absolute;left:0;right:0;bottom:0;display:flex;gap:12px}
+.acts button{flex:1;padding:12px}
+.list{overflow:auto;flex:1;margin-top:8px}
+.row{display:flex;justify-content:space-between;padding:12px 4px;border-bottom:1px solid var(--bd);font-size:17px}
+.row span:last-child{color:var(--mut)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var W="abandon|terk etmek;achieve|başarmak;admit|kabul etmek;afford|(maddi olarak) karşılamak;agree|aynı fikirde olmak;ancient|antik;anxious|endişeli;apply|başvurmak;arrange|düzenlemek;ashamed|utanmış;attempt|girişim, denemek;avoid|kaçınmak;aware|farkında;benefit|fayda;borrow|ödünç almak;breathe|nefes almak;brilliant|parlak, harika;campaign|kampanya;cancel|iptal etmek;career|kariyer;challenge|zorluk, meydan okuma;character|karakter;complain|şikâyet etmek;confident|kendinden emin;consider|düşünmek, göz önünde bulundurmak;convince|ikna etmek;crowd|kalabalık;damage|zarar;deadline|son teslim tarihi;decrease|azalmak;delay|gecikme;deny|inkâr etmek;depend|bağlı olmak;describe|tanımlamak;develop|geliştirmek;disappear|kaybolmak;discover|keşfetmek;earn|kazanmak;edge|kenar;effort|çaba;encourage|cesaretlendirmek;environment|çevre;essential|temel, şart;expect|beklemek;experience|deneyim;familiar|tanıdık;fault|hata, kusur;fear|korku;flexible|esnek;forgive|affetmek;generous|cömert;growth|büyüme;guess|tahmin etmek;handle|başa çıkmak;harm|zarar vermek;honest|dürüst;ignore|görmezden gelmek;improve|iyileştirmek;increase|artmak;influence|etki;invite|davet etmek;journey|yolculuk;knowledge|bilgi;lack|eksiklik;likely|muhtemel;manage|yönetmek;measure|ölçmek;memory|hafıza, anı;neglect|ihmal etmek;noticeable|dikkat çekici;obvious|açık, belli;occur|meydana gelmek;offer|teklif etmek;opportunity|fırsat;patient|sabırlı;perform|gerçekleştirmek;permit|izin vermek;prefer|tercih etmek;prevent|önlemek;promise|söz vermek;recover|iyileşmek;reduce|azaltmak;refuse|reddetmek;regret|pişmanlık;rely|güvenmek;require|gerektirmek;respond|cevap vermek;reveal|ortaya çıkarmak;satisfy|memnun etmek;support|desteklemek;suspect|şüphelenmek;tend|eğilimi olmak;urgent|acil;valuable|değerli;wander|dolaşmak".split(";").map(function(s){var p=s.split("|");return{en:p[0],tr:p[1]}});
+var app=document.getElementById("app"),known={};
+try{known=JSON.parse(localStorage.getItem("known")||"{}")}catch(e){}
+function save(){try{localStorage.setItem("known",JSON.stringify(known))}catch(e){}}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function home(){
+  var left=W.filter(function(w){return!known[w.en]}).length;
+  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola. Kalan yeni kelime: '+left+'</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div>';
+  app.querySelectorAll("[data-n]").forEach(function(b){b.onclick=function(){start(+b.dataset.n)}});
+}
+var deck,idx,unk,kn,total;
+function start(n){
+  deck=shuffle(W.filter(function(w){return!known[w.en]}));
+  if(!deck.length){known={};save();deck=shuffle(W.slice())}
+  deck=deck.slice(0,n);total=deck.length;idx=0;unk=[];kn=0;show();
+}
+function show(){
+  if(idx>=total)return done();
+  app.innerHTML='<div class="bar"><span>'+(idx+1)+' / '+total+'</span><span>✓ '+kn+' · ✗ '+unk.length+'</span></div><div class="track"><div class="fill" style="width:'+(idx/total*100)+'%"></div></div><div id="stage"><div class="card" id="c"><span class="tag" id="tk">BİLİYORUM</span><span class="tag" id="tu">BİLMİYORUM</span>'+deck[idx].en+'</div><div class="acts"><button id="bu">✗ Bilmiyorum</button><button id="bk">Biliyorum ✓</button></div></div>';
+  var c=document.getElementById("c"),x0=null,dx=0;
+  c.onpointerdown=function(e){x0=e.clientX;c.setPointerCapture(e.pointerId)};
+  c.onpointermove=function(e){if(x0===null)return;dx=e.clientX-x0;c.style.transform="translateX("+dx+"px) rotate("+dx/20+"deg)";document.getElementById("tk").style.opacity=Math.max(0,dx/100);document.getElementById("tu").style.opacity=Math.max(0,-dx/100)};
+  c.onpointerup=function(){if(x0===null)return;x0=null;if(dx>90)go(true);else if(dx<-90)go(false);else{c.style.transform="";document.getElementById("tk").style.opacity=0;document.getElementById("tu").style.opacity=0}dx=0};
+  document.getElementById("bk").onclick=function(){go(true)};
+  document.getElementById("bu").onclick=function(){go(false)};
+}
+function go(ok){
+  var w=deck[idx],c=document.getElementById("c");
+  if(ok){known[w.en]=1;kn++}else unk.push(w);
+  save();c.style.transition="transform .2s,opacity .2s";c.style.transform="translateX("+(ok?500:-500)+"px)";c.style.opacity=0;
+  setTimeout(function(){idx++;show()},200);
+}
+function done(){
+  app.innerHTML='<h1>Bitti 🎉</h1><p>Bildiğin: '+kn+' · Bilmediğin: '+unk.length+'</p><div class="list">'+(unk.length?unk.map(function(w){return'<div class="row"><span>'+w.en+'</span><span>'+w.tr+'</span></div>'}).join(""):'<p>Hepsini biliyorsun!</p>')+'</div><button id="h" style="margin-top:12px">Başa dön</button>';
+  document.getElementById("h").onclick=home;
+}
+home();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){})}
+</script>
+</body>
+</html>
