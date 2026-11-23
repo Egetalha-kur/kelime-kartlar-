@@ -35,21 +35,28 @@ button:active{transform:scale(.97)}
 </head>
 <body>
 <div id="app"></div>
+<script src="words.js"></script>
 <script>
-var W="abandon|terk etmek;achieve|başarmak;admit|kabul etmek;afford|(maddi olarak) karşılamak;agree|aynı fikirde olmak;ancient|antik;anxious|endişeli;apply|başvurmak;arrange|düzenlemek;ashamed|utanmış;attempt|girişim, denemek;avoid|kaçınmak;aware|farkında;benefit|fayda;borrow|ödünç almak;breathe|nefes almak;brilliant|parlak, harika;campaign|kampanya;cancel|iptal etmek;career|kariyer;challenge|zorluk, meydan okuma;character|karakter;complain|şikâyet etmek;confident|kendinden emin;consider|düşünmek, göz önünde bulundurmak;convince|ikna etmek;crowd|kalabalık;damage|zarar;deadline|son teslim tarihi;decrease|azalmak;delay|gecikme;deny|inkâr etmek;depend|bağlı olmak;describe|tanımlamak;develop|geliştirmek;disappear|kaybolmak;discover|keşfetmek;earn|kazanmak;edge|kenar;effort|çaba;encourage|cesaretlendirmek;environment|çevre;essential|temel, şart;expect|beklemek;experience|deneyim;familiar|tanıdık;fault|hata, kusur;fear|korku;flexible|esnek;forgive|affetmek;generous|cömert;growth|büyüme;guess|tahmin etmek;handle|başa çıkmak;harm|zarar vermek;honest|dürüst;ignore|görmezden gelmek;improve|iyileştirmek;increase|artmak;influence|etki;invite|davet etmek;journey|yolculuk;knowledge|bilgi;lack|eksiklik;likely|muhtemel;manage|yönetmek;measure|ölçmek;memory|hafıza, anı;neglect|ihmal etmek;noticeable|dikkat çekici;obvious|açık, belli;occur|meydana gelmek;offer|teklif etmek;opportunity|fırsat;patient|sabırlı;perform|gerçekleştirmek;permit|izin vermek;prefer|tercih etmek;prevent|önlemek;promise|söz vermek;recover|iyileşmek;reduce|azaltmak;refuse|reddetmek;regret|pişmanlık;rely|güvenmek;require|gerektirmek;respond|cevap vermek;reveal|ortaya çıkarmak;satisfy|memnun etmek;support|desteklemek;suspect|şüphelenmek;tend|eğilimi olmak;urgent|acil;valuable|değerli;wander|dolaşmak".split(";").map(function(s){var p=s.split("|");return{en:p[0],tr:p[1]}});
+var UNLOCK=0.8;
+var LV=LEVELS.map(function(l){return{id:l.id,words:l.text.split("\n").map(function(s){return s.trim()}).filter(function(s){return s&&s[0]!=="#"&&s.indexOf("|")>0}).map(function(s){var p=s.split("|");return{en:p[0].trim(),tr:p[1].trim()}})}}).filter(function(l){return l.words.length});
 var app=document.getElementById("app"),known={};
 try{known=JSON.parse(localStorage.getItem("known")||"{}")}catch(e){}
 function save(){try{localStorage.setItem("known",JSON.stringify(known))}catch(e){}}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function cnt(l){return l.words.filter(function(w){return known[w.en]}).length}
+function ul(){var r=[];for(var i=0;i<LV.length;i++){r.push(i===0||(r[i-1]&&cnt(LV[i-1])/LV[i-1].words.length>=UNLOCK))}return r}
 function home(){
-  var left=W.filter(function(w){return!known[w.en]}).length;
-  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola. Kalan yeni kelime: '+left+'</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div>';
+  var u=ul();
+  var rows=LV.map(function(l,i){return'<div class="row"><span>'+(u[i]?'':'🔒 ')+l.id+'</span><span>'+cnt(l)+' / '+l.words.length+'</span></div>'}).join("");
+  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola.</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div><div class="list" style="flex:none;margin-top:16px">'+rows+'</div><p style="margin-top:8px;font-size:13px">Bir seviyedeki kelimelerin %'+UNLOCK*100+' kadarını bilince sonraki seviye açılır.</p>';
   app.querySelectorAll("[data-n]").forEach(function(b){b.onclick=function(){start(+b.dataset.n)}});
 }
-var deck,idx,unk,kn,total;
+var deck,idx,unk,kn,total,before;
 function start(n){
-  deck=shuffle(W.filter(function(w){return!known[w.en]}));
-  if(!deck.length){known={};save();deck=shuffle(W.slice())}
+  var u=ul();deck=[];
+  LV.forEach(function(l,i){if(u[i])deck=deck.concat(shuffle(l.words.filter(function(w){return!known[w.en]})))});
+  if(!deck.length){alert("Açık seviyelerdeki tüm kelimeleri biliyorsun! words.js dosyasına yeni kelime ekleyebilirsin.");return}
+  before=u.filter(Boolean).length;
   deck=deck.slice(0,n);total=deck.length;idx=0;unk=[];kn=0;show();
 }
 function show(){
@@ -69,7 +76,8 @@ function go(ok){
   setTimeout(function(){idx++;show()},200);
 }
 function done(){
-  app.innerHTML='<h1>Bitti 🎉</h1><p>Bildiğin: '+kn+' · Bilmediğin: '+unk.length+'</p><div class="list">'+(unk.length?unk.map(function(w){return'<div class="row"><span>'+w.en+'</span><span>'+w.tr+'</span></div>'}).join(""):'<p>Hepsini biliyorsun!</p>')+'</div><button id="h" style="margin-top:12px">Başa dön</button>';
+  var n=ul().filter(Boolean).length,msg=n>before?'<p style="color:var(--ok)">🎉 Yeni seviye açıldı: '+LV[n-1].id+'</p>':'';
+  app.innerHTML='<h1>Bitti 🎉</h1><p>Bildiğin: '+kn+' · Bilmediğin: '+unk.length+'</p>'+msg+'<div class="list">'+(unk.length?unk.map(function(w){return'<div class="row"><span>'+w.en+'</span><span>'+w.tr+'</span></div>'}).join(""):'<p>Hepsini biliyorsun!</p>')+'</div><button id="h" style="margin-top:12px">Başa dön</button>';
   document.getElementById("h").onclick=home;
 }
 home();
