@@ -48,8 +48,9 @@ function ul(){var r=[];for(var i=0;i<LV.length;i++){r.push(i===0||(r[i-1]&&cnt(L
 function home(){
   var u=ul();
   var rows=LV.map(function(l,i){return'<div class="row"><span>'+(u[i]?'':'🔒 ')+l.id+'</span><span>'+cnt(l)+' / '+l.words.length+'</span></div>'}).join("");
-  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola.</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div><div class="list" style="flex:none;margin-top:16px">'+rows+'</div><p style="margin-top:8px;font-size:13px">Bir seviyedeki kelimelerin %'+UNLOCK*100+' kadarını bilince sonraki seviye açılır.</p>';
+  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola.</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div><div class="list" style="flex:none;margin-top:16px">'+rows+'</div><p style="margin-top:8px;font-size:13px">Bir seviyedeki kelimelerin %'+UNLOCK*100+' kadarını bilince sonraki seviye açılır.</p><button id="rs" style="margin-top:12px;font-size:15px;padding:12px;color:var(--no)">İlerlemeyi sıfırla</button>';
   app.querySelectorAll("[data-n]").forEach(function(b){b.onclick=function(){start(+b.dataset.n)}});
+  document.getElementById("rs").onclick=function(){if(confirm("Tüm ilerlemen silinecek. Emin misin?")&&confirm("Bu işlem geri alınamaz. Gerçekten sıfırlansın mı?")){known={};save();home()}};
 }
 var deck,idx,unk,kn,total,before;
 function start(n){
