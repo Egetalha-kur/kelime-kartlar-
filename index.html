@@ -37,32 +37,40 @@ button:active{transform:scale(.97)}
 <div id="app"></div>
 <script src="words.js"></script>
 <script>
-var UNLOCK=0.8;
-var LV=LEVELS.map(function(l){return{id:l.id,words:l.text.split("\n").map(function(s){return s.trim()}).filter(function(s){return s&&s[0]!=="#"&&s.indexOf("|")>0}).map(function(s){var p=s.split("|");return{en:p[0].trim(),tr:p[1].trim()}})}}).filter(function(l){return l.words.length});
-var app=document.getElementById("app"),known={};
-try{known=JSON.parse(localStorage.getItem("known")||"{}")}catch(e){}
-function save(){try{localStorage.setItem("known",JSON.stringify(known))}catch(e){}}
+var UNLOCK=0.8,DAYS=[1,3,7];
+var LV=LEVELS.map(function(l){return{id:l.id,words:l.text.split("\n").map(function(s){return s.trim()}).filter(function(s){return s&&s[0]!=="#"&&s.indexOf("|")>0}).map(function(s){var p=s.split("|");return{en:p[0].trim(),tr:p[1].trim(),lv:l.id}})}}).filter(function(l){return l.words.length});
+var app=document.getElementById("app"),srs={};
+try{srs=JSON.parse(localStorage.getItem("srs")||"{}")}catch(e){}
+function save(){try{localStorage.setItem("srs",JSON.stringify(srs))}catch(e){}}
+function today(){return Math.floor((Date.now()-new Date().getTimezoneOffset()*6e4)/864e5)}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
-function cnt(l){return l.words.filter(function(w){return known[w.en]}).length}
+function learned(w){var r=srs[w.en];return r&&r.s===3}
+function cnt(l){return l.words.filter(learned).length}
+function due(w){var r=srs[w.en];return r&&r.s<3&&r.t+DAYS[r.s]<=today()}
+function key(s){return s.toLocaleLowerCase("tr").replace(/[^\p{L} ]/gu,"").trim().split(" ")[0]}
 function ul(){var r=[];for(var i=0;i<LV.length;i++){r.push(i===0||(r[i-1]&&cnt(LV[i-1])/LV[i-1].words.length>=UNLOCK))}return r}
 function home(){
-  var u=ul();
+  var u=ul(),d=0;
+  LV.forEach(function(l,i){if(u[i])l.words.forEach(function(w){if(due(w))d++})});
   var rows=LV.map(function(l,i){return'<div class="row"><span>'+(u[i]?'':'🔒 ')+l.id+'</span><span>'+cnt(l)+' / '+l.words.length+'</span></div>'}).join("");
-  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün kaç kelime kaydırmak istiyorsun? Bildiklerin sağa, bilmediklerin sola.</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div><div class="list" style="flex:none;margin-top:16px">'+rows+'</div><p style="margin-top:8px;font-size:13px">Bir seviyedeki kelimelerin %'+UNLOCK*100+' kadarını bilince sonraki seviye açılır.</p><button id="rs" style="margin-top:12px;font-size:15px;padding:12px;color:var(--no)">İlerlemeyi sıfırla</button>';
+  app.innerHTML='<h1>Kelime Kartları</h1><p>Bugün tekrarı gelen kelime: '+d+'. Kaç kart çalışacaksın? Bildiklerin sağa, bilmediklerin sola.</p><div class="grid">'+[20,50,100,200].map(function(n){return'<button data-n="'+n+'">'+n+'</button>'}).join("")+'</div><div class="list" style="flex:none;margin-top:16px">'+rows+'</div><p style="margin-top:8px;font-size:13px">Sayılar öğrenilen kelimeleri gösterir (son testi geçenler). Bir seviyedeki kelimelerin %'+UNLOCK*100+' kadarını öğrenince sonraki seviye açılır.</p><button id="rs" style="margin-top:12px;font-size:15px;padding:12px;color:var(--no)">İlerlemeyi sıfırla</button>';
   app.querySelectorAll("[data-n]").forEach(function(b){b.onclick=function(){start(+b.dataset.n)}});
-  document.getElementById("rs").onclick=function(){if(confirm("Tüm ilerlemen silinecek. Emin misin?")&&confirm("Bu işlem geri alınamaz. Gerçekten sıfırlansın mı?")){known={};save();home()}};
+  document.getElementById("rs").onclick=function(){if(confirm("Tüm ilerlemen silinecek. Emin misin?")&&confirm("Bu işlem geri alınamaz. Gerçekten sıfırlansın mı?")){srs={};save();home()}};
 }
-var deck,idx,unk,kn,total,before;
+var deck,idx,unk,kn,total,before,tp,tt;
 function start(n){
-  var u=ul();deck=[];
-  LV.forEach(function(l,i){if(u[i])deck=deck.concat(shuffle(l.words.filter(function(w){return!known[w.en]})))});
-  if(!deck.length){alert("Açık seviyelerdeki tüm kelimeleri biliyorsun! words.js dosyasına yeni kelime ekleyebilirsin.");return}
-  before=u.filter(Boolean).length;
-  deck=deck.slice(0,n);total=deck.length;idx=0;unk=[];kn=0;show();
+  var u=ul(),dv=[],nw=[];
+  LV.forEach(function(l,i){if(!u[i])return;shuffle(l.words.slice()).forEach(function(w){if(due(w))dv.push(w);else if(!srs[w.en])nw.push(w)})});
+  deck=dv.concat(nw).slice(0,n);
+  if(!deck.length){alert("Bugün için kart kalmadı. Yarın tekrar gel ya da words.js dosyasına yeni kelime ekle.");return}
+  before=u.filter(Boolean).length;total=deck.length;idx=0;unk=[];kn=0;tp=0;tt=0;show();
 }
 function show(){
   if(idx>=total)return done();
-  app.innerHTML='<div class="bar"><span>'+(idx+1)+' / '+total+'</span><span>✓ '+kn+' · ✗ '+unk.length+'</span></div><div class="track"><div class="fill" style="width:'+(idx/total*100)+'%"></div></div><div id="stage"><div class="card" id="c"><span class="tag" id="tk">BİLİYORUM</span><span class="tag" id="tu">BİLMİYORUM</span>'+deck[idx].en+'</div><div class="acts"><button id="bu">✗ Bilmiyorum</button><button id="bk">Biliyorum ✓</button></div></div>';
+  var w=deck[idx],r=srs[w.en];
+  var bar='<div class="bar"><span>'+(idx+1)+' / '+total+'</span><span>✓ '+kn+' · ✗ '+unk.length+'</span></div><div class="track"><div class="fill" style="width:'+(idx/total*100)+'%"></div></div>';
+  if(r&&r.s===2)return test(w,bar);
+  app.innerHTML=bar+'<div id="stage"><div class="card" id="c"><span class="tag" id="tk">BİLİYORUM</span><span class="tag" id="tu">BİLMİYORUM</span>'+w.en+'</div><div class="acts"><button id="bu">✗ Bilmiyorum</button><button id="bk">Biliyorum ✓</button></div></div>';
   var c=document.getElementById("c"),x0=null,dx=0;
   c.onpointerdown=function(e){x0=e.clientX;c.setPointerCapture(e.pointerId)};
   c.onpointermove=function(e){if(x0===null)return;dx=e.clientX-x0;c.style.transform="translateX("+dx+"px) rotate("+dx/20+"deg)";document.getElementById("tk").style.opacity=Math.max(0,dx/100);document.getElementById("tu").style.opacity=Math.max(0,-dx/100)};
@@ -70,15 +78,30 @@ function show(){
   document.getElementById("bk").onclick=function(){go(true)};
   document.getElementById("bu").onclick=function(){go(false)};
 }
+function test(w,bar){
+  var lvl=LV.filter(function(l){return l.id===w.lv})[0].words,all=LV.reduce(function(a,l){return a.concat(l.words)},[]),used={},o=[];
+  used[key(w.tr)]=1;
+  shuffle(lvl.slice()).concat(shuffle(all)).forEach(function(x){var k=key(x.tr);if(o.length<3&&x.en!==w.en&&!used[k]){used[k]=1;o.push(x.tr)}});
+  o.push(w.tr);shuffle(o);
+  app.innerHTML=bar+'<div id="stage"><div class="card" style="position:static;height:140px;margin-bottom:14px">'+w.en+'</div><p style="text-align:center">Son test: doğru anlamı seç</p>'+o.map(function(t){return'<button class="opt" style="display:block;width:100%;margin-bottom:10px;font-size:18px;padding:14px">'+t+'</button>'}).join("")+'</div>';
+  app.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){
+    var ok=b.textContent===w.tr;tt++;
+    app.querySelectorAll(".opt").forEach(function(x){x.disabled=true;if(x.textContent===w.tr)x.style.borderColor="var(--ok)"});
+    if(!ok)b.style.borderColor="var(--no)";
+    if(ok){srs[w.en].s=3;tp++}else{srs[w.en]={t:today(),s:0};unk.push(w)}
+    save();setTimeout(function(){idx++;show()},ok?600:1400);
+  }});
+}
 function go(ok){
-  var w=deck[idx],c=document.getElementById("c");
-  if(ok){known[w.en]=1;kn++}else unk.push(w);
+  var w=deck[idx],c=document.getElementById("c"),r=srs[w.en];
+  if(ok){kn++;if(!r)srs[w.en]={t:today(),s:0};else r.s++}
+  else{unk.push(w);if(r)srs[w.en]={t:today(),s:0}}
   save();c.style.transition="transform .2s,opacity .2s";c.style.transform="translateX("+(ok?500:-500)+"px)";c.style.opacity=0;
   setTimeout(function(){idx++;show()},200);
 }
 function done(){
   var n=ul().filter(Boolean).length,msg=n>before?'<p style="color:var(--ok)">🎉 Yeni seviye açıldı: '+LV[n-1].id+'</p>':'';
-  app.innerHTML='<h1>Bitti 🎉</h1><p>Bildiğin: '+kn+' · Bilmediğin: '+unk.length+'</p>'+msg+'<div class="list">'+(unk.length?unk.map(function(w){return'<div class="row"><span>'+w.en+'</span><span>'+w.tr+'</span></div>'}).join(""):'<p>Hepsini biliyorsun!</p>')+'</div><button id="h" style="margin-top:12px">Başa dön</button>';
+  app.innerHTML='<h1>Bitti 🎉</h1><p>Bildiğin: '+kn+' · Bilmediğin: '+unk.length+(tt?' · Test: '+tp+' / '+tt:'')+'</p>'+msg+'<div class="list">'+(unk.length?unk.map(function(w){return'<div class="row"><span>'+w.en+'</span><span>'+w.tr+'</span></div>'}).join(""):'<p>Hepsini biliyorsun!</p>')+'</div><button id="h" style="margin-top:12px">Başa dön</button>';
   document.getElementById("h").onclick=home;
 }
 home();
